@@ -1,0 +1,101 @@
+/* Common styles */
+body {
+    background-color: #f8f9fa;
+}
+
+/* Article styles */
+.article-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    padding: 20px;
+}
+
+.article-title {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.article-meta {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.article-content {
+    color: #444;
+    line-height: 1.6;
+}
+
+/* Comment styles */
+.comment-section {
+    margin-top: 30px;
+}
+
+.comment {
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.comment-meta {
+    color: #666;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+/* Category styles */
+.category-badge {
+    background: #007bff;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+    font-size: 14px;
+}
+
+/* Admin panel styles */
+.admin-panel {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.admin-actions {
+    margin-bottom: 20px;
+}
+
+/* Markdown editor styles */
+.editor-toolbar {
+    border: 1px solid #ddd;
+    border-radius: 4px 4px 0 0;
+    padding: 10px;
+}
+
+.editor-content {
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    min-height: 300px;
+    padding: 15px;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .article-card {
+        padding: 15px;
+    }
+    
+    .article-title {
+        font-size: 20px;
+    }
+}
