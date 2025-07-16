@@ -6,8 +6,16 @@ import (
 	"gorm.io/gorm"
 )
 
+// BaseModel 自定义基础模型，避免零日期问题
+type BaseModel struct {
+	ID        uint           `gorm:"primarykey" json:"ID"`
+	CreatedAt time.Time      `json:"CreatedAt"`
+	UpdatedAt time.Time      `json:"UpdatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"DeletedAt,omitempty"`
+}
+
 type User struct {
-	gorm.Model
+	BaseModel
 	Username     string `gorm:"size:50;not null;unique"`
 	Password     string `gorm:"size:255;not null"`
 	Email        string `gorm:"size:100"`
@@ -16,13 +24,13 @@ type User struct {
 }
 
 type Category struct {
-	gorm.Model
+	BaseModel
 	Name     string    `gorm:"size:50;not null;unique"`
 	Articles []Article `gorm:"many2many:article_categories;"`
 }
 
 type Article struct {
-	gorm.Model
+	BaseModel
 	Title      string     `gorm:"size:200;not null"`
 	Content    string     `gorm:"type:text;not null"`
 	IsMarkdown bool       `gorm:"default:true"`
@@ -33,7 +41,7 @@ type Article struct {
 }
 
 type Comment struct {
-	gorm.Model
+	BaseModel
 	Content   string  `gorm:"type:text;not null"`
 	ArticleID uint    `gorm:"not null"`
 	UserID    *uint   // nullable for anonymous comments
@@ -44,7 +52,7 @@ type Comment struct {
 }
 
 type AuthToken struct {
-	gorm.Model
+	BaseModel
 	UserID    uint      `gorm:"not null"`
 	Token     string    `gorm:"size:255;not null"`
 	ExpiredAt time.Time `gorm:"not null"`

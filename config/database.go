@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/kiorffen/ai_blog/internal/model"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"github.com/kiorffen/ai_blog/internal/model"
 )
 
 var DB *gorm.DB
@@ -26,10 +27,15 @@ func InitDB() {
 	dbPass := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&sql_mode=ALLOW_INVALID_DATES",
 		dbUser, dbPass, dbHost, dbPort, dbName)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		NowFunc: func() time.Time {
+			return time.Now().Local()
+		},
+	})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}

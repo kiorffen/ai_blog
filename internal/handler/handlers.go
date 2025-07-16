@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -57,10 +58,20 @@ func (h *ArticleHandler) CreateArticle(c *gin.Context) {
 	}
 
 	// Get user ID from JWT token context
-	userID, _ := c.Get("userID")
-	article.UserID = userID.(uint)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+		return
+	}
+
+	userIDUint := userID.(uint)
+	article.UserID = userIDUint
+
+	// 添加调试信息
+	log.Printf("Creating article with UserID: %d", userIDUint)
 
 	if err := h.articleService.CreateArticle(&article); err != nil {
+		log.Printf("Error creating article: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -76,8 +87,21 @@ func (h *ArticleHandler) UpdateArticle(c *gin.Context) {
 		return
 	}
 
+	// Get user ID from JWT token context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+		return
+	}
+
 	article.ID = uint(id)
+	article.UserID = userID.(uint) // 确保UserID被正确设置
+
+	// 添加调试信息
+	log.Printf("Updating article ID: %d with UserID: %d", article.ID, article.UserID)
+
 	if err := h.articleService.UpdateArticle(&article); err != nil {
+		log.Printf("Error updating article: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

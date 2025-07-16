@@ -2,17 +2,63 @@
 const API_BASE_URL = '/api';
 let easyMDE = null;
 
-// 将认证检查包装在一个函数中
-function checkAuth() {
+// 通用的API请求函数，处理认证和错误
+async function apiRequest(url, options = {}) {
+    const currentAuth = getCurrentAuth();
+    if (!currentAuth) {
+        alert('Authentication failed. Please login again.');
+        window.location.href = '/login.html';
+        return null;
+    }
+
+    const defaultHeaders = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentAuth.token}`
+    };
+
+    const requestOptions = {
+        ...options,
+        headers: {
+            ...defaultHeaders,
+            ...options.headers
+        }
+    };
+
+    try {
+        const response = await fetch(url, requestOptions);
+        
+        if (response.status === 401) {
+            // Token过期或无效，清除本地存储并重定向到登录页
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            alert('Session expired. Please login again.');
+            window.location.href = '/login.html';
+            return null;
+        }
+        
+        return response;
+    } catch (error) {
+        console.error('API request failed:', error);
+        throw error;
+    }
+}
+
+// 获取当前认证信息的函数
+function getCurrentAuth() {
     const token = localStorage.getItem('token');
     const userRaw = localStorage.getItem('user');
     
+    console.log('Getting current auth - token exists:', !!token);
+    console.log('Getting current auth - user exists:', !!userRaw);
+    
     if (!token || !userRaw) {
+        console.log('No token or user found');
         return null;
     }
 
     try {
         const currentUser = JSON.parse(userRaw);
+        console.log('Current user:', currentUser);
         if (currentUser.id !== 1) {
             alert('Access denied. Admin privileges required.');
             localStorage.removeItem('token');
@@ -22,11 +68,17 @@ function checkAuth() {
         }
         return { token, currentUser };
     } catch (error) {
+        console.error('Error parsing user data:', error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login.html';
         return null;
     }
+}
+
+// 将认证检查包装在一个函数中
+function checkAuth() {
+    return getCurrentAuth();
 }
 
 // 进行认证检查
@@ -190,35 +242,58 @@ async function handleArticleSubmit(e) {
         alert('Please fill in all required fields');
         return;
     }
+    
+    // 获取当前认证信息
+    const currentAuth = getCurrentAuth();
+    if (!currentAuth) {
+        alert('Authentication failed. Please login again.');
+        window.location.href = '/login.html';
+        return;
+    }
+    
     const article = { Title: title, Content: content, IsMarkdown: isMarkdown, Categories: selectedCategories };
     try {
         const url = articleId ? `${API_BASE_URL}/admin/articles/${articleId}` : `${API_BASE_URL}/admin/articles`;
-        const response = await fetch(url, {
+        console.log('Sending request to:', url);
+        
+        const response = await apiRequest(url, {
             method: articleId ? 'PUT' : 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${auth.token}`
-            },
             body: JSON.stringify(article)
         });
-        if (!response.ok) throw new Error('Failed to save article');
+        
+        if (!response) return; // apiRequest已经处理了错误
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server response:', response.status, errorText);
+            throw new Error(`Failed to save article: ${response.status} ${errorText}`);
+        }
+        
         bootstrap.Modal.getInstance(document.getElementById('articleModal')).hide();
         loadArticles();
     } catch (error) {
         console.error('Error saving article:', error);
-        alert('Failed to save article');
+        alert('Failed to save article: ' + error.message);
     }
 }
 
 async function handleCategorySubmit(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
+    
+    const currentAuth = getCurrentAuth();
+    if (!currentAuth) {
+        alert('Authentication failed. Please login again.');
+        window.location.href = '/login.html';
+        return;
+    }
+    
     try {
         const response = await fetch(`${API_BASE_URL}/admin/categories`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${auth.token}`
+                'Authorization': `Bearer ${currentAuth.token}`
             },
             body: JSON.stringify({ Name: formData.get('name') })
         });
@@ -246,10 +321,18 @@ async function handleEditArticle(id) {
 
 async function handleDeleteArticle(id) {
     if (!confirm('Are you sure you want to delete this article?')) return;
+    
+    const currentAuth = getCurrentAuth();
+    if (!currentAuth) {
+        alert('Authentication failed. Please login again.');
+        window.location.href = '/login.html';
+        return;
+    }
+    
     try {
         const response = await fetch(`${API_BASE_URL}/admin/articles/${id}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${auth.token}` }
+            headers: { 'Authorization': `Bearer ${currentAuth.token}` }
         });
         if (!response.ok) throw new Error('Failed to delete article');
         loadArticles();
@@ -262,10 +345,17 @@ async function handleDeleteArticle(id) {
 async function handleDeleteCategory(id) {
     if (!confirm('Are you sure you want to delete this category?')) return;
     
+    const currentAuth = getCurrentAuth();
+    if (!currentAuth) {
+        alert('Authentication failed. Please login again.');
+        window.location.href = '/login.html';
+        return;
+    }
+    
     try {
         const response = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${auth.token}` }
+            headers: { 'Authorization': `Bearer ${currentAuth.token}` }
         });
         
         if (!response.ok) throw new Error('Failed to delete category');
@@ -307,7 +397,8 @@ async function handleChangePassword(e) {
     e.preventDefault();
     
     // 检查认证状态
-    if (!auth || !auth.token) {
+    const currentAuth = getCurrentAuth();
+    if (!currentAuth) {
         alert('Authentication required. Please login again.');
         window.location.href = '/login.html';
         return;
@@ -329,13 +420,13 @@ async function handleChangePassword(e) {
     }
 
     try {
-        console.log('Sending change password request with token:', auth.token ? 'token exists' : 'no token');
+        console.log('Sending change password request with token:', currentAuth.token ? 'token exists' : 'no token');
         
         const response = await fetch(`${API_BASE_URL}/admin/change-password`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${auth.token}`
+                'Authorization': `Bearer ${currentAuth.token}`
             },
             body: JSON.stringify({
                 oldPassword: currentPassword,

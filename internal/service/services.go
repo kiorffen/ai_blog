@@ -81,7 +81,35 @@ func (s *ArticleService) GetArticleByID(id uint) (*model.Article, error) {
 }
 
 func (s *ArticleService) UpdateArticle(article *model.Article) error {
-	return config.DB.Save(article).Error
+	// 开始事务
+	tx := config.DB.Begin()
+
+	// 更新文章基本信息
+	if err := tx.Model(article).Where("id = ?", article.ID).Updates(map[string]interface{}{
+		"title":       article.Title,
+		"content":     article.Content,
+		"is_markdown": article.IsMarkdown,
+	}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 更新分类关联
+	if len(article.Categories) > 0 {
+		// 先清除现有的分类关联
+		if err := tx.Model(article).Association("Categories").Clear(); err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		// 添加新的分类关联
+		if err := tx.Model(article).Association("Categories").Append(article.Categories); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit().Error
 }
 
 func (s *ArticleService) DeleteArticle(id uint) error {
